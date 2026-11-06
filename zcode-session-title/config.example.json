@@ -1,0 +1,7 @@
+{
+  "baseUrl": "https://api.deepseek.com/anthropic/v1/messages",
+  "apiKey": "$DEEPSEEK_API_KEY",
+  "model": "deepseek-flash",
+  "thinking": "disabled",
+  "timeoutMs": 12000
+}

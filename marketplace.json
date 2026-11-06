@@ -1,0 +1,22 @@
+{
+  "name": "dev-zcode-plugins",
+  "owner": {
+    "name": "local"
+  },
+  "plugins": [
+    {
+      "name": "zcode-session-title",
+      "source": "./zcode-session-title",
+      "version": "0.1.0",
+      "description": "会话规范命名：MMDD·类型·主题。hook 调用配置的模型接口生成标题并写入 ZCode 会话库",
+      "displayName": "ZCode Session Title",
+      "displayName_i18n": {
+        "zh-CN": "会话自动命名"
+      },
+      "description_i18n": {
+        "zh-CN": "首个回合后自动把会话标题改成 MMDD·类型·主题，不依赖对话模型"
+      },
+      "category": "productivity"
+    }
+  ]
+}
