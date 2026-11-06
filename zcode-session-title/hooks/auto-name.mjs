@@ -8,7 +8,7 @@
 //   hook:   runs on UserPromptSubmit, exits immediately. If the session has no
 //           title in the plugin's format yet, it reserves a state file and spawns
 //           a detached worker, then exits.
-//   worker: asks the configured model for {type, topic}, writes "MMDD·类型·主题"
+//   worker: asks the configured model for {type, topic}, writes "MMDD｜类型｜主题"
 //           into the session row, stores the outcome in the state file.
 //
 // Config: ~/.zcode/session-title/config.json
@@ -33,7 +33,7 @@ const CONFIGS = [
 ]
 const STATE_DIR = join(tmpdir(), 'zcode-session-title')
 const RESERVE_MS = 60_000
-const TITLE_RE = new RegExp(`^\\d{4}·(?:${TYPES.join('|')})·`)
+const TITLE_RE = new RegExp(`^\\d{4}\\s*[·｜|]\\s*(?:${TYPES.join('|')})\\s*[·｜|]`)
 
 const KIND_HINT = '判定顺序：故障/报错 → 修复；明确新增能力 → 功能；只谈外观交互 → 设计；' +
   '只谈变快变好 → 优化；只谈提交上线 → 发布；只谈文档 → 文档；深度验证或选型 → 研究；其余 → 探索。'
@@ -128,7 +128,7 @@ async function askModel(prompt, cfg, budgetMs, date) {
     const sys = attempt ? system + SHORT : system
     const text = await requestText({ model: cfg.model, max_tokens: 300, system: sys, messages, ...(cfg.thinking ? { thinking: cfg.thinking } : {}) }, cfg, budgetMs)
     const out = parseNaming(text)
-    if (out && (attempt > 0 || [...out.topic].length <= MAX_TOPIC)) return `${date}·${out.type}·${out.topic}`
+    if (out && (attempt > 0 || [...out.topic].length <= MAX_TOPIC)) return `${date}｜${out.type}｜${out.topic}`
   }
   return null
 }

@@ -1,6 +1,6 @@
 # zcode-session-title
 
-ZCode 会话规范命名插件。会话**第一个回合**结束后，标题自动变成 `MMDD·类型·主题`。
+ZCode 会话规范命名插件。会话**第一个回合**结束后，标题自动变成 `MMDD｜类型｜主题`。
 
 不依赖对话模型执行：hook 脚本自己读取用户消息，通过你配置的模型接口判断类型与主题，再直接写入 ZCode 会话库。
 即使对话用的是不听话的模型，命名依然生效。
@@ -10,7 +10,7 @@ ZCode 会话规范命名插件。会话**第一个回合**结束后，标题自�
 `hooks/auto-name.mjs` 挂在 `UserPromptSubmit` 上：
 
 1. 读取 stdin 里的 `session_id`、`prompt`。
-2. 会话标题已经是 `MMDD·类型·主题` 格式、或用户手动改过名（`title_source = 'custom'` 但不是本插件格式）→ 静默退出。
+2. 会话标题已经是 `MMDD｜类型｜主题` 格式、或用户手动改过名（`title_source = 'custom'` 但不是本插件格式）→ 静默退出。
 3. 否则写入临时状态文件（同会话 60 秒内只触发一次），spawn 一个后台 worker，hook 立刻退出，**不阻塞首条消息**。
 4. worker 调模型拿 `{type, topic}`，写两处：
    - `~/.zcode/cli/db/db.sqlite` 的 `session.title` / `title_source = 'custom'`
@@ -53,7 +53,7 @@ ZCode 会话规范命名插件。会话**第一个回合**结束后，标题自�
 printf '%s' '{"session_id":"<会话 id>","prompt":"登录接口偶尔500，帮我查下"}' \
   | node hooks/auto-name.mjs prompt
 sleep 5
-# 读库确认 session.title 变成 1106·修复·登录接口500排查
+# 读库确认 session.title 变成 1106｜修复｜登录接口500排查
 ```
 
 - 同一会话再触发 → 无动作。
