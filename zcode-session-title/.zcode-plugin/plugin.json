@@ -1,6 +1,6 @@
 {
   "name": "zcode-session-title",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "会话规范命名：MMDD｜类型｜主题。hook 调用配置的模型接口生成标题并写入 ZCode 会话库，不依赖对话模型",
   "author": {
     "name": "local"

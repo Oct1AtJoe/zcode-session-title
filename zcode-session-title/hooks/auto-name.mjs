@@ -94,15 +94,18 @@ function readSession(id) {
 /** Same write a manual rename performs; false on failure. */
 function writeTitle(id, title) {
   let ok = false
-  try {
-    const db = new DatabaseSync(DB_PATH)
-    db.exec('pragma busy_timeout = 3000')
-    const info = db.prepare(
-      "update session set title = ?, title_source = 'custom', time_title_updated = ? where id = ?",
-    ).run(title, Date.now(), id)
-    db.close()
-    ok = info.changes > 0
-  } catch {}
+  for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+    if (attempt) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300)
+    try {
+      const db = new DatabaseSync(DB_PATH)
+      db.exec('pragma busy_timeout = 3000')
+      const info = db.prepare(
+        "update session set title = ?, title_source = 'custom', time_title_updated = ? where id = ?",
+      ).run(title, Date.now(), id)
+      db.close()
+      ok = info.changes > 0
+    } catch {}
+  }
   // The desktop sidebar renders its own task index; a manual rename keeps both in sync.
   try {
     const db = new DatabaseSync(INDEX_PATH)
@@ -227,6 +230,84 @@ if (mode === 'worker') {
   const workerCfg = loadConfig()
   if (workerCfg) await runWorker(process.argv[3], workerCfg)
   clearInterval(keepAlive)
+  process.exit(0)
+}
+
+/** First real user text of a session, skipping synthetic prompts; null when there is none. */
+function firstUserText(db, id) {
+  let rows = []
+  try {
+    rows = db.prepare('select id, data from message where session_id = ? order by time_created limit 40').all(id)
+  } catch {
+    return null
+  }
+  for (const m of rows) {
+    let msg
+    try { msg = JSON.parse(m.data) } catch { continue }
+    if (msg.role !== 'user' || msg.metadata?.runtimeMessage) continue
+    let parts = []
+    try {
+      parts = db.prepare('select data from part where message_id = ? order by sequence').all(m.id)
+    } catch {
+      continue
+    }
+    for (const p of parts) {
+      let part
+      try { part = JSON.parse(p.data) } catch { continue }
+      if (part.type !== 'text' || part.synthetic) continue
+      const text = String(part.text ?? '').trim()
+      if (text) return text
+    }
+  }
+  return null
+}
+
+/** Name every visible session that does not carry the plugin's title format yet. */
+async function backfill(cfg) {
+  let db
+  try {
+    db = new DatabaseSync(DB_PATH, { readOnly: true })
+  } catch {
+    throw new Error(`cannot open ${DB_PATH}`)
+  }
+  const rows = db.prepare(
+    'select id, title, time_created from session where parent_id is null and time_deleted is null order by time_created',
+  ).all()
+  const todo = rows.filter((r) => !TITLE_RE.test(r.title ?? ''))
+  const total = todo.length
+  console.error(`backfill: ${rows.length} sessions, ${total} to name`)
+  let done = 0
+  let ok = 0
+  let noText = 0
+  let failed = 0
+  const workers = Array.from({ length: 8 }, async () => {
+    for (;;) {
+      const row = todo.shift()
+      if (!row) return
+      const text = firstUserText(db, row.id)
+      if (!text) {
+        noText++
+      } else {
+        const date = mmddShanghai(new Date(Number(row.time_created) || Date.now()))
+        const title = await askModel(text, cfg, cfg.timeoutMs, date)
+        if (title && writeTitle(row.id, title)) ok++
+        else failed++
+      }
+      if (++done % 25 === 0) console.error(`  ${done}/${total} ok=${ok} noText=${noText} failed=${failed}`)
+    }
+  })
+  await Promise.all(workers)
+  db.close()
+  console.error(`backfill done: ok=${ok} noText=${noText} failed=${failed}`)
+}
+
+if (mode === 'backfill') {
+  const cfg = loadConfig()
+  if (!cfg) {
+    console.error('backfill: no config at ~/.zcode/session-title/config.json or the Claude plugin config')
+    process.exit(1)
+  }
+  await backfill(cfg)
   process.exit(0)
 }
 

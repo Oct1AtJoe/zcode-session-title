@@ -47,6 +47,18 @@ ZCode 会话规范命名插件。会话**第一个回合**结束后，标题自�
 - 纯图片/附件首条消息没有文本，会等下一次带文本的消息。
 - 临时状态文件在系统临时目录 `zcode-session-title/` 下，60 秒内去重。
 
+## 批量重命名已有会话
+
+```bash
+node ~/.zcode/plugins/zcode-session-title/hooks/auto-name.mjs backfill
+```
+
+扫描所有可见会话（跳过子会话、已删除会话），用首条真实用户消息命名，8 路并发。
+标题已是 `MMDD｜类型｜主题` 的自动跳过；没有文本内容的消息（如 `Untitled session`）跳过。
+改完需重启 ZCode，侧栏才显示新标题。
+
+建议先备份标题：`~/.zcode/session-title/backup-titles-*.json`。
+
 ## 验证
 
 ```bash
